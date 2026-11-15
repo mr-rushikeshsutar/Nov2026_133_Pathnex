@@ -1,0 +1,143 @@
+#Day15
+#####################################
+#tasks 
+#ansible - Install Java & Set JAVA_HOME
+#terraform - Create S3 Bucket
+#kubernetes - CronJob
+#shell-script - Read File Line-by-Line
+#jenkins - Slack Notification
+#gitlab - Slack Notification
+###################################
+#ansible - Install Java & Set JAVA_HOME
+
+---
+- name: install java
+  hosts: all
+  become: yes
+
+  tasks:
+  - name: install java
+    yum:
+     name: java-11-openjdk
+     state: present
+
+  - name: set java_home
+    lineinfile:
+      path: /etc/profile
+      line: 'export JAVA_HOME=/usr/lib/jvm/java-11-openjdk'
+
+#terraform - Create S3 Bucket
+
+provider.tf
+
+provider "aws"{
+region = "us-east-1"
+}
+
+resource "aws_s3_bucket" "pathnexb"{
+bucket = "pathnex-s3-bucket"
+
+tags= {
+Name = "pathnexb"
+}
+}
+
+
+#kubernetes - CronJob
+
+
+apiVersion : batch/v1
+kind: CronJob
+metadata:
+ name: pathnex-cron
+
+spec:
+ schedule: "*/5 * * * *"
+ jobTemplate:
+   spec:
+    template:
+     spec:
+      containers:
+      - name: job
+        image: busybox
+        command: ["sh","-c","echo pathnex job running"]
+
+      restartPolicy: OnFailure 
+
+
+#shell-script - Read File Line-by-Line
+
+#!/bin/bash
+
+FILE="/etc/passwd"
+
+while read line; do
+echo "line: $line"
+done < "$FILE"
+
+#jenkins - Slack Notification
+
+pipeline {
+agent any
+ 
+ environment{
+ INSTITUTE_NAME= "PATHNEX"
+ SLACK_CHANNEL= "#devops"
+}
+
+stages{
+stage('checkout'){
+steps{
+git branch 'main', url: 'https://github.com/Pathnex/sample-java-app.git'
+}
+}
+
+
+stage('build'){
+steps{
+sh 'mvn clean package'
+}
+}
+
+
+}
+
+
+post{
+success{
+slackSend(channel: "$SLACK_CHANNEL", message: "SUCCESS: $INSTITUTE_NAME Build #${env.BUILD_NUMBER}" )
+
+}
+
+failuer{
+slackSend(channel: "$SLACK_CHANNEL", message: "FAILURE: $INSTITUTE_NAME Build #${env.BUILD_NUMBER}" )
+
+}
+}
+}
+
+
+
+
+#gitlab - Slack Notification
+
+
+stages:
+ - build
+
+variables:
+ INSTITUTE_NAME = "PATHNEX"
+ SLACK_WEBHOOK= "https://hooks.slack.com/services/XXXXX/YYYYY/ZZZZZ"
+
+build:
+ stage: build
+ image: maven:3.8.9-eclips-temurin-17
+ script:
+ - git clone
+ - cd
+ - mvn clean package 
+ - curl -X POST -H 'Content-type: application/json' --data '{"text": "Build success for pathnex"}' 
+
+$SLACK_WEBHOOK
+
+
