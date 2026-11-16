@@ -1,0 +1,137 @@
+#Day16
+#####################################
+#tasks 
+#ansible - Create Role Structure
+#terraform - DynamoDB
+#kubernetes - StatefulSet
+#shell-script - Check Service Running
+#jenkins - Promote Artifacts
+#gitlab - Promote Artifacts
+###################################
+
+#ansible - Create Role Structure
+
+---
+- name: install httpd
+  hosts: all
+  become: yes
+
+  tasks:
+  - name: install httpd
+    yum:
+     name: httpd
+     state: present
+
+#terraform - DynamoDB
+
+
+resource "aws_dynamodb_table" "pathnextb"{
+
+name = "pathnex-training-tb"
+billing_mode = "PAY_PER_REQUEST"
+hash_key = "ID"
+
+
+attribute {
+ name= "ID"
+ type = "S"
+}
+
+tags = {
+Name = "pathnex-tb"
+}
+}
+
+#kubernetes - StatefulSet
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: 
+ name: pathnex-db
+
+spec:
+ serviceName: "pathnex"
+ replicas: 2
+ selector:
+  matchlabels:
+   app: pathnex-db
+
+ template: 
+  metadata: 
+   labels:
+    app: pathnex-db
+
+  spec:
+   containers:
+    name: db
+    image: MySQL
+    env:
+    - name: db
+      value: "pathnex123"
+         
+    volumeMounts:
+    - name: mysql-storage
+      mountPath: /var/lib/mysql
+
+
+#shell-script - Check Service Running
+
+#!/bin/bash
+
+service="nginx"
+
+if $service is-active --quite; then 
+echo "$service" is running
+else
+ system start $service
+ echo "$service is started "
+
+#jenkins - Promote Artifacts
+
+
+pipeline {
+agent any
+environment{
+INSTITUTE_NAME = "pathnex"
+}
+stages{
+stage("build"){
+steps{
+sh 'mvn clean package'
+}
+}
+stage('pramote'){
+steps{
+input message: "promote artifact to staging?"
+
+sh 'echo "pramoting artifact for $INSTITUTE_NAME"'
+}
+}
+}
+}
+
+
+#gitlab - Promote Artifacts
+
+stages:
+- build
+- promote
+
+build:
+ stage: build
+ image: maven:3.8.9-eclips-temurin-17
+ script:
+ - sh mvn clean package
+
+ artifacts:
+  path:
+   - target/*.jar
+  expire_in: 1 week
+
+promote:
+ stage: promote
+ image: alpine:latest
+ script:
+ - echo "promoting artifact to pathnex"
+ when: manual
+
