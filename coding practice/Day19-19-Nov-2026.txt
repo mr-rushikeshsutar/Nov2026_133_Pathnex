@@ -1,0 +1,137 @@
+#Day19
+#####################################
+#tasks 
+#ansible - Deploy App Using Git
+#terraform - RDS Skeleton (MySQL)
+#kubernetes - Deployment Rolling Update
+#shell-script - Check Internet Connectivity
+#jenkins - Approvals
+#gitlab - Approvals
+###################################
+
+
+#ansible - Deploy App Using Git
+
+---
+- name: deploy from git 
+  hosts: all
+  become: yes
+ 
+  tasks:
+   - name: install git 
+      yum:
+       name: git
+       state: present
+
+   - name: clone repo
+     git:
+      repo: "https://github.com/pathnex/app.git"
+      dest: "/opt/pathnex-app"
+      version: main
+
+
+#terraform - RDS Skeleton (MySQL)
+
+
+resource "aws_db_instance" "pathnex-db"{
+
+allocated_storage = 20
+engine = "mysql"
+instance_class = "db.t3.micro"
+username = "admin"
+password = "pathnex"
+skip_final_snapshot = true
+}
+
+
+#kubernetes - Deployment Rolling Update
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+ name: pathnex-rollout
+
+spec:
+ replicas: 3
+ strategy:
+  type: RollingUpdate
+   rollingUpdate: 
+     maxSurge: 2
+     maxUnavailable: 1
+ 
+ selector:
+  matchLabels:
+   app: rollout
+ 
+ template:
+  metadata:
+   labels:
+    app: rollout
+
+  spec:
+   containers:
+    - name: app
+      image: nginx
+      ports:
+      - containerPort: 80
+
+#shell-script - Check Internet Connectivity
+
+#!/bin/bash
+if
+ ping -c 2 www.google.com ; then
+echo "internet available"
+else
+echo "No internet" 
+fi
+
+#!/bin/bash
+ping -c 2 www.google.com
+
+if [ $? -eq 0 ]; then 
+echo "internet ok"
+else
+echo "no"
+fi 
+
+#jenkins - Approvals
+
+
+pipeline {
+
+agent any 
+
+environment {
+INSTITUTE_NAME = "PATHNEX"
+}
+
+stages {
+stage ('deploy'){
+steps{
+input message: "Approve deployment for $INSTITUTE_NAME?"
+sh 'echo "deployment approved for $INSTITUTE_NAME"'
+}
+}
+
+}
+}
+
+
+#gitlab - Approvals
+
+
+stages:
+ - deploy
+
+variables:
+ INSTITUTE_NAME= "PATHNEX"
+
+deploy :
+ stage : deploy
+ image: alpine:latest
+ script:
+  - echo "ready to deploy $INSTITUTE_NAME" 
+ when: manual
+
+
+
