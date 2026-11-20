@@ -1,0 +1,138 @@
+#Day18
+#####################################
+#tasks 
+#ansible - Ansible Facts
+#terraform - Variables, Outputs
+#kubernetes - Node Affinity
+#shell-script - Archive Log Files
+#jenkins - Simulated Rollback
+#gitlab - Simulated Rollback
+###################################
+
+---
+- name:  show system facts
+  hosts: all
+  become: yes
+
+  tasks:
+  - name : print os 
+    debug:
+      var: ansible_facts['os_family']
+
+  - name: print ip address
+    debug:
+      var: ansible_facts['default_ipv4']['address']
+
+
+#terraform - Variables, Outputs
+
+
+main.tf 
+
+resource "aws_instance" "pathnexec2" {
+ami = "ami-1233456xcvbnm"
+instance_type = var.instance_type
+tags = {
+Name = var.ec2tag
+
+}
+}
+
+variable.tf
+variable "region"{
+type= string
+default= "us-east-1"
+}
+
+
+variable "instance_type"{
+type = string
+default = c6i.xlarge
+}
+
+variable "ec2tag"{
+type = string
+default= "dev-server"
+}
+
+output.tf
+
+output "pathnex-ip"{
+value = aws_instance.pathnexec2.public_ip
+}
+
+#kubernetes - Node Affinity
+
+apiVersion : v1
+kind: Pod
+metadata: 
+ name: pathnex-affinity 
+
+spec:
+ affinity:
+  nodeAffinity:        requiredDuringSchedulingIgnoredDuringExecution:
+    nodeSelectorTerms:
+     - matchExpressions:
+        - key : disktype
+          oprator :In
+          values:
+             -ssd
+
+
+  containers:
+   - name: web
+     image: nginx
+     ports:
+     - containerPort: 80
+
+#shell-script - Archive Log Files
+
+#!/bin/bash
+
+tar -czvf /backup/web-log-$(date + %F).tar.gz /var/log/
+
+
+#jenkins - Simulated Rollback
+
+pipeline {
+
+agent any 
+
+environment {
+INSTITUTE_NAME = "PATHNEX"
+}
+stages{
+stage('build'){
+steps{
+script{
+try{
+sh 'echo "deploying to $INSTITUTE_NAME"'
+sh 'exit 1' // simulate failuer
+}
+catch (Exception e) {
+ echo "deployment failed rolling back $INSTITUTE_NAME"
+}
+}
+}
+}
+}
+}
+
+
+#gitlab - Simulated Rollback
+
+
+stages:
+ - deploy
+
+variables:
+ INSTITUTE_NAME: "PATHNEX"
+
+deploy:
+ stage: deploy
+ image: alpine:latest
+ script:
+  - echo "deploying $INSTITUTE_NAME"
+  - exit 1
+ after_script:
+  - echo "Deployment failed, rolling back $INSTITUTE_NAME"
