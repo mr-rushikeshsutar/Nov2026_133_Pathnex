@@ -1,0 +1,138 @@
+#Day17
+#####################################
+#tasks 
+#ansible - Create Multiple Users in Loop
+#terraform - Application Load Balancer
+#kubernetes - Namespace + Deployment
+#shell-script - Top 5 Memory Processes
+#jenkins - Simulated Deployment
+#gitlab - Simulated Deployment
+###################################
+
+#ansible - Create Multiple Users in Loop
+
+---
+- name: create multiple role
+  hosts: all
+  become: yes
+  
+  vars:
+   users:
+   - dev1
+   - dev2
+   - dev3
+
+  tasks:
+  - name: create-user
+    user:
+     name: "{{item}}"
+     state: present
+    loop: "{{users}}"
+
+
+#terraform - Application Load Balancer
+
+
+resource "aws_lb" "pathnexlb" {
+name = "pathnex-alb"
+load_balancer_type = "application"
+subnet = [aws_subnet.pathnexsub.id]
+
+tags = {
+Name = "pathnex-lb"
+} 
+}
+
+#kubernetes - Namespace + Deployment
+
+---
+apiVersion : v1
+kind: Namespace
+metadata:
+ name: pathnex
+
+---
+apiVersion : apps/v1
+kind: Deployment
+metadata: 
+ name: pathnex-deployment
+ namespace: pathnex
+
+spec:
+ replicas: 2
+ selector:
+  matchLabels:
+   app: "pathnex"
+
+ template:
+  metadata:
+   labels:
+    app: "pathnex"
+  
+  spec:
+   containers: 
+    - name: app
+      image: nginx
+      ports:
+       - containerPort: 80
+
+#shell-script - Top 5 Memory Processes
+
+#!/bin/bash
+
+ps aux --sort=-%mem | head -n 5
+
+
+#jenkins - Simulated Deployment
+
+
+pipeline {
+agent any 
+
+environment {
+INSTITUTE_NAME= "PATHNECX"
+}
+
+parameters{
+choice(
+name: 'ENVIRONMENT', 
+choices: ['dev', 'stage' ,'prod'],
+description: "Deployment Environment"
+)
+}
+
+stages{
+stage('build') {
+steps{
+sh 'mvn clean package'
+}
+}
+
+stage('deploy') {
+steps{
+ sh 'echo "deploying $INSTITUTE_NAME application to $ENVIRONMENT"'
+}
+}
+
+}
+}
+
+#gitlab - Simulated Deployment
+
+stages:
+ - deploy
+
+variables:
+ INSTITUTE_NAME: "PATHNEX"
+ ENVIRONMENT: "stag"
+
+deploy:
+ stage: deploy
+ image: maven:3.8.9-eclips-temurin-17
+ script:
+  - echo "deploying $INSTITUTE_NAME to $ENVIRONMENT"
+
+
+
+
+
