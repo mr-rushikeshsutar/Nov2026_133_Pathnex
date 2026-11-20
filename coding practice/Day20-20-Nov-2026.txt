@@ -1,0 +1,125 @@
+#Day20
+#####################################
+#tasks DEBUG DAY
+#ansible - Install httpd
+#terraform - ec2
+#kubernetes - Deployment 
+#shell-script - service
+#jenkins - Secrets & Credentials
+#gitlab - Secrets & Credentials
+###################################
+
+#ansible - Install httpd
+
+---
+- name: install httpd
+  hosts: all
+  become: yes
+
+  tasks:
+   - name: install httpd
+     yum:
+       name: httpd
+       state: present
+
+
+#terraform - ec2
+
+resource "aws_instance" "pathnexec2"{
+ami = "ami-123456xcvbnxfd"
+instance_type = c6i.8xlarge
+
+tags = {
+Name = "pathnex-prod"
+}
+}
+
+#kubernetes - Deployment 
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+ name: pathnex-deployment
+
+spec:
+ replicas: 3
+
+
+ selector:
+  matchLabels:
+   app: "pathnex-web"
+
+ template:
+  metadata:
+   labels:
+    app: "pathnex-web"
+
+  spec:
+   containers:
+    - name: pathnex-ngix
+      image: nginx:latest
+      ports:
+       - containerPort: 80
+ 
+#shell-script - service
+
+#!/bin/bash
+service="nginx"
+if systemctl $service  is-active --quiet ; then
+echo "$service is running"
+else
+systemctl start $service 
+
+echo "restarting $service"
+
+#jenkins - Secrets & Credentials
+
+pipeline {
+
+agent any 
+
+environment {
+INSTITUTE_NAME = "PATHNEX"
+}
+
+stages{
+
+stage('checkout'){
+steps{
+
+git branch 'main', url: 'https://github.com/Pathnex/sample-java-app.git'
+
+}
+}
+
+stage('use-secret') {
+steps{
+withCredentials([string(credentialsID:'PATHNEX_API_KEY', variable:'API_KEY')]){
+sh 'echo "using secrete $API_KEY for $INSTITUTE_NAME"'
+}
+}
+}
+}
+
+}
+
+
+#gitlab - Secrets & Credentials
+
+
+stages:
+ - build
+
+variables:
+ INSTITUTE_NAME: "PATHNEX"
+ API_KEY : "PLACEHOLDER_SECRET"
+
+build:
+ stage: build
+ image: alpine:latest
+ script:
+  - echo "using secret $API_KEY for $INSTITUTE_NAME"
+
+
+
+
