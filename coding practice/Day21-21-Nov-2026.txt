@@ -1,0 +1,148 @@
+#Day21
+#####################################
+#tasks SPEED TYPING
+#ansible - nginx, Start enable service
+#terraform - ec2 Tag Owner: PathnexStudent
+#kubernetes - Deployment 3 replicas
+#shell-script - date, uptime, disk usage
+#jenkins - Multi-Environment Pipeline
+#gitlab - Multi-Environment Pipeline
+###################################
+
+#ansible - nginx, Start enable service
+
+---
+- name: install nginx
+  hosts: all
+  become: yes
+
+  tasks:
+  - name: install nginx
+    yum:  
+     name: nginx
+     state: present
+
+  - name: start service
+    service:
+     name: nginx
+     state: started
+     enabled: yes
+
+#terraform - ec2 Tag Owner: PathnexStudent
+
+
+resource "aws_instance" "pathnex-ec2" {
+ami = "ami-123456zxcvbnmdcf"
+instance_type = "c6i.xlarge"
+tags = {
+Owner= "PathnexStudent"
+}
+}
+
+#kubernetes - Deployment 3 replicas
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+ name: pathnex-deployment
+
+spec:
+ replicas: 3
+ 
+ selector:
+  matchLabels:
+   app: pathnex-web
+
+ template:
+  metadata:
+   labels:
+    app: pathnex-web
+
+  spec:
+    containers:
+      - name: pathnex
+        image: nginx
+        ports:
+         - containerPort: 80
+
+#shell-script - date, uptime, disk usage
+
+#!/bin/bash
+echo"daye is :"
+date
+
+echo"uptime is :"
+uptime
+
+echo"disk-usgae is :"
+
+du -sh . 
+
+#jenkins - Multi-Environment Pipeline
+
+
+pipeline {
+agent any 
+environment {
+INSTITUTE_NAME = "PATHNEX" 
+}
+
+stages{
+stage('deploy to dev') {
+steps{
+ sh 'echo" deploying $INSTUTUTE_NAME to dev "'
+}
+
+}
+
+stage('deploy to stagging') {
+steps{
+input message : "APPROVE STAGING DEPLOYMENT?"
+sh 'echo" deploying $INSTUTUTE_NAME to staging "'
+}
+
+}
+
+stage('deploy to prod'){
+
+steps{
+input message: "APPROVE $INSTITUTE_NAME TO PROD"
+sh 'echo" deploying $INSTUTUTE_NAME to prod "  '
+}
+}
+
+}
+}
+
+
+#gitlab - Multi-Environment Pipeline
+
+stage:
+ - deploy
+
+variables:
+ INSTITUTE_NAME: "PATHNEX"
+
+deploy-dev:
+ stage: deploy
+ image: alpine:latest
+ script:
+  - echo "deploying $INSTITUTE_NAME to dev"
+ when: manual
+
+deploy-stage:
+ stage: deploy
+ image: alpine:latest
+ script:
+  - echo "deploying $INSTITUTE_NAME to stage"
+ when: manual
+
+deploy-prod:
+ stage: deploy
+ image: alpine:latest
+ script:
+  - echo "deploying $INSTITUTE_NAME to prod"
+ when: manual
+
+
