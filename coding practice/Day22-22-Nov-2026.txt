@@ -1,0 +1,144 @@
+#Day22
+#####################################
+#tasks
+#ansible - Handler on Config Change
+#terraform - Security Group
+#kubernetes - DaemonSet
+#shell-script - Monitor Disk Usage
+#jenkins - Trigger on Tag
+#gitlab - Trigger on Tag
+###################################
+
+#ansible - Handler on Config Change
+
+---
+- name: configure nginx for pathnex
+  become: yes
+  hosts: all 
+
+  tasks:
+  - name: copy nginx config 
+    copy:
+     dest: /etc/nginx/nginx.conf
+     content: |
+       user nginx;
+       worker_processes auto;
+    notify: restart nginx
+
+  handlers:
+   - name: restart nginx
+     service:
+      name: nginx
+      state: restarted 
+
+
+#terraform - Security Group
+
+resource "aws_security_group" "pathnexsg" {
+name = "pathnex-sg"
+vpc_id = aws_vpc.pathnexvpc.id
+
+ingress {
+from_port = 80
+to_port = 80
+protocol= "tcp"
+cidr_blocks = ["0.0.0.0/0"]
+}
+
+tags = {
+Name= "pathnex-sg"
+}
+}
+
+
+#kubernetes - DaemonSet
+
+apiVersion : apps/v1
+kind: DaemonSet
+metadata: 
+ name: pathnex-daemon
+
+spec:
+ selector:  
+  matchLabels:
+   app: ds
+
+ template:
+  metadata:
+   labels:
+    app: ds
+  spec:
+   containers:
+    - name: monitor
+      image: nginx
+      command: ["sh", "-c", "while true; do echo pathnex node monitor; sleep 20; done"]
+
+
+
+#shell-script - Monitor Disk Usage
+#!/bin/bash
+usage=$(df -h | tail -5 | awk '{print $5}')
+
+echo "disk usage: $usage"
+
+
+
+#jenkins - Trigger on Tag
+
+pipeline {
+
+agent any 
+
+environment {
+INSTITUTE_NAME= "PATHNEX"
+TEAM= "DevOps"
+ENV= "prod"
+}
+
+triggers {
+pollSCM('H/15 * * * *')
+}
+
+stages{
+stage('checkout'){
+steps{
+git branch 'main', url: 'https://github.com/Pathnex/sample-java-app.git'
+}
+}
+
+
+stage('build'){
+when {
+buildingTag()
+}
+
+steps {
+sh 'echo "building $INSTITUTE_NAME app for $TEAM in $ENV environment"' 
+
+}
+
+}
+
+}
+}
+
+
+
+#gitlab - Trigger on Tag
+
+
+stages:
+ - build
+
+variables:
+ INSTITUTE_NAME: "PATHNEX"
+ TEAM: "DevOps"
+ ENV: "prod"
+
+build:
+ stage: build
+ image: maven:3.8.1-eclipse-temurin-17
+ script:
+  - echo "building $INSTUTUTE_NAME app for $TEAM team in $ENV environment"
+ only:
+  - tags
