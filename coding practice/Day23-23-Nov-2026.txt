@@ -1,0 +1,137 @@
+#Day23
+#####################################
+#tasks
+#ansible - Add Tags to Users
+#terraform - Elastic IP
+#kubernetes - HPA
+#shell-script - Kill High CPU Process
+#jenkins - Docker Integration
+#gitlab - Docker Integration
+###################################
+
+#ansible - Add Tags to Users
+
+---
+- name: create user with comment
+  hosts: all
+  become: yes
+
+
+  tasks:
+   - name: create user
+     user: 
+      name: devuser
+      comment: "pathnex-dev-user"
+
+#terraform - Elastic IP
+
+
+resource "aws_eip" "pathnex-eip" {
+instance = aws_instance.pathnexec2.id
+
+tags = {
+Name = "pathnex-eip"
+}
+}
+
+
+#kubernetes - HPA
+
+apiVersion : autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+ name: pathnex-hpa
+
+spec:
+ scaleTargetRef:
+  apiVersion : apps/v1
+  kind: Deployment
+  name: pathnex-deploy
+
+ minReplicas: 2
+ maxReplicas:6
+ metrics:
+  - type: Resource
+    resource:
+     name: cpu
+     target:
+      type: Utilization
+      averageUtilization: 50 
+
+
+
+#shell-script - Kill High CPU Process
+
+#!/bin/bash
+
+PID=$(ps aux --sort=-%cpu | awk 'NR==2{print $2}')
+
+echo "killing process : $PID"
+kill -9 $PID
+
+
+#jenkins - Docker Integration
+
+pipeline {
+agent any 
+environment {
+INSTITUTE_NAME="PATHNEX"
+TEAM="DEVOPS"
+ENV="STAGING"
+PROJECT= "WEBAPP"
+}
+
+
+stages{
+
+stage('checkout'){
+
+steps{
+
+git branch 'main', url: 'https://github.com/Pathnex/sample-java-app.git'
+}
+}
+
+
+stage('build') {
+steps{
+sh '''
+ docker build -t pathnex/webapp:${ENV}-${BUILD_NUMBER} \ --label "INSTITUTE_NAME= $INSTITUTE_NAME" \
+
+  --label "TEAM=$TEAM"
+  --label "ENV=$ENV"
+  --label "PROJECT=$PROJECT" .
+
+'''
+}
+
+}
+}
+
+}
+
+
+
+
+
+#gitlab - Docker Integration
+
+stages:
+ - docker-build
+
+variables :
+  INSTITUTE_NAME: "PATHNEX"
+  TEAM: "DEVOPS"
+  ENV: "STAGING"
+  PROJECT: "WEBAPP"
+
+docker-build
+ stage: docker-build
+ image: docker:latest
+ services:
+  - docker:dind
+ script:
+  - docker build -t pathnex/webapp:${ENV}-${CI_PIPELINE_ID} \  --label "INSTITUTE_NAME=$INSTITUTE_NAME" \
+  --label "TEAM=$TEAM" \
+  --label "ENV=$ENV" \
+  --label "PROJECT=$PROJECT" .
