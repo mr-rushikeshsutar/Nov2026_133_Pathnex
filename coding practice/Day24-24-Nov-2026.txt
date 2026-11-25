@@ -1,0 +1,164 @@
+#Day24
+#####################################
+#tasks
+#ansible - Deploy Config Using Template
+#terraform - ALB Listener
+#kubernetes - PV + PVC
+#shell-script - Menu Driven Program
+#jenkins - Automated Testing
+#gitlab - Automated Testing
+###################################
+
+#ansible - Deploy Config Using Template
+
+---
+- name: deploy pathnex template
+  hosts: all
+  become: yes
+
+  tasks:
+   - name: create config
+     template:
+       src: pathnex.conf.j2
+       dest: /etc/pathnex.conf
+
+#terraform - ALB Listener
+
+resource "aws_lb_listener" "pathnexlistner" {
+
+load_balancer_arn = aws_lb.pathnexalb.arn
+port = "80"
+protocol = "HTTP"
+
+default_action {
+
+type = "fixed-response"
+
+fixed_response {
+
+content_type = "text/plain"
+message_body = "pathnex alb running"
+status_code = "200"
+
+}
+
+
+}
+
+}
+
+#kubernetes - PV + PVC
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+ name: pathnex-pv
+
+spec:
+  capacity:
+    storage: 1 Gi
+  accessModes:
+     - ReadWriteOnce
+  hostPath:
+   path: /data/pathnex
+
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+ name: pathnex-pvc
+
+spec:
+  accessMode:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 500Mi
+
+#shell-script - Menu Driven Program
+
+#!/bin/bash
+
+echo "1) show date"
+echo "2) show uptime"
+echo "3) show users"
+
+read -p "choose option: " opt
+case $opt in 
+1) date ;;
+2) uptime ;;
+3) who ;;
+*) echo "invalid req";;
+esac
+
+
+#jenkins - Automated Testing
+
+pipeline {
+agent any 
+
+environment {
+INSTITUTE_NAME =  "PATHNEX"
+TEAM = "QA"
+ENV = "dev"
+}
+
+stages{
+stage('checkout'){
+steps{
+git branch 'main', url: 'https://github.com/Pathnex/sample-java-app.git'
+}
+}
+
+stage('unit-test') {
+steps{
+sh 'mvn test -Dgroup=unit'
+}
+}
+
+stage('integration-test'){
+steps{
+sh 'mvn verify -Dgroup=integration'
+}
+
+}
+
+stage('report') {
+steps{
+sh 'echo "test completed for $INSTITITE_NAME by $TEAM in $ENV"'
+}
+}
+
+}
+
+}
+
+
+#gitlab - Automated Testing
+
+
+stages:
+ - unit
+ - integration 
+
+variables:
+ INSTITUTE_NAME: "PATHNEX"
+ TEAM : "QA"
+ ENV : "DEV"
+
+unit-test:
+ stage: unit
+ image: maven:3.8.1-jdk-17
+ script:
+  - mvn test -Dgroup=unit
+  - echo "unit test completed for $INSTITUTE_NAME by $TEAM in $ENV"
+
+integration-test
+ stage: integration
+ image: maven:3.8.21-jdk-17
+ script:
+  - mvn test -Dgroup=integration
+  - echo "test completed for $INSTITUTE_NAME by $TEAM in $ENV "
+
