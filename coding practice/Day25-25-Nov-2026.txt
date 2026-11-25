@@ -1,0 +1,123 @@
+#Day25
+#####################################
+#tasks
+#ansible - Modify Existing Line
+#terraform - EC2 Key Pair Output
+#kubernetes - Multi-Container Pod - Sidecar
+#shell-script - Count Files in Directory
+#jenkins - Cache Dependencies
+#gitlab - Cache Dependencies
+###################################
+
+#ansible - Modify Existing Line
+
+--- 
+- name: update ssh config for pathnex
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: disable root login 
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "^PermitRootLogin"
+        line: "PermitRootLogin no"
+
+#terraform - EC2 Key Pair Output
+
+resource "aws_key_pair" "pathnexkey"{
+key_name = "pathnexkey"
+public_key = file(pathexpand("~/.ssh/id_rsa.pub"))
+}
+
+output "pathnex_key_name" {
+value = aws_key_pair.pathnexkey.key_name
+}
+
+#kubernetes - Multi-Container Pod - Sidecar
+
+apiVersion: v1
+kind: Pod
+metadata:
+ name: pathnex-sidecar
+
+spec:
+  containers:
+   - name: app
+     image: nginx
+   - name: log-writer
+     image: busybox
+     command: ["sh", "-c", "while true; do echo log entry ; sleep 5; done"]
+
+
+
+#shell-script - Count Files in Directory
+
+#!/bin/bash
+
+DIR ="/var/log"
+COUNT=$(ls $DIR | wc -l)
+
+echo "total files in $DIR = $COUNT"
+
+
+
+#jenkins - Cache Dependencies
+pipeline {
+agent any 
+
+environment {
+INSTITUTE_NAME = "PATHNEX"
+TEAM= "QA"
+ENV= "DEV"
+}
+
+stages{
+stage('checkout'){
+steps{
+git branch 'main', url : 'https://github.com/Pathnex/sample-java-app.git'
+}
+}
+
+stage('build'){
+steps{
+sh '''
+
+if [-d ".m2"]; then 
+echo "using cashed dependencies for $INSTITUTE_NAME IN $ENV BY $TEAM"
+
+
+else
+ mvn clean compile
+
+fi 
+'''
+}
+} 
+}
+
+
+
+}
+
+#gitlab - Cache Dependencies
+
+stages:
+ - build
+
+variables:
+ INSTITUTE_NAME:"PATHNEX"
+ ENV: "QA"
+ TEAM: "DEVOPS"
+
+
+build:
+ stage: build
+ image: maven:3.8.1-jdk-17
+ cache:
+  key: "${ENV}-maven-cache"
+  paths:
+   - .m2/repository
+ script:
+  - mvn clean compile
+  - echo "cached dependencies for $INSTITUTE_NAME in $ENV by $TEAM"
