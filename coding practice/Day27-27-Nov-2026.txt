@@ -1,0 +1,99 @@
+#Day27
+#####################################
+#tasks
+#ansible - Copy Directory Recursively
+#terraform - EBS Volume + Attachment
+#kubernetes - NodePort Service
+#shell-script - Clean Old Logs
+#jenkins - Scripted Pipeline
+#gitlab - Scripted Pipeline
+###################################
+
+#ansible - Copy Directory Recursively
+
+
+--- 
+- name: copy pathnex files
+  hosts: all
+  become: yes
+
+  tasks:
+   - name: copy directory 
+     copy:
+      src: /opt/pathnex/
+      dest: /backup/pathnex
+      remote_src: yes
+
+
+
+#terraform - EBS Volume + Attachment
+
+resource "aws_ebs_volume" "pathnexvol"{
+
+availability_zone = "us-east-1a"
+size = 20
+type = "gp3"
+
+tags={
+Name= "pathnex-vol"
+}
+}
+
+resource "aws_volume_attachment" "pathnexebsattch"{
+device_name= "/dev/sdh"
+volume_id = aws_ebs_volume.pathnexvol.id
+instance_id = aws_instance.pathnexec2.id
+}
+
+
+#kubernetes - NodePort Service
+
+apiVersion: v1
+kind: Service
+metadata: 
+ name: pathnex-service
+
+spec:
+ type: NodePort
+ 
+ selector:
+   app: "pathnex"
+
+ ports:
+  - port:80
+    targetPort:80
+    nodePort: 30080
+
+#shell-script - Clean Old Logs
+
+#!/bin/bash
+log_dir="/var/log"
+find log_dir -type f  -mtime +7 exec rm -rf {} \ ;
+echo "old log removed "
+
+
+#jenkins - Scripted Pipeline
+
+node {
+def  env.Name= "dev"
+env.INSTITUTE_NAME= "pathnex"
+env.TEAM = "Dev"
+
+stage('checkout') {
+git url:'https://github.com/Pathnex/sample-java-app.git' 
+}
+
+stage('build') {
+if (env.Name == "dev") {
+sh 'echo "building $INSTITUTE_NAME app in dev env for $TEAM"'
+}
+else {
+sh 'echo "skipping build for $env.Name"'
+}
+}
+stage('Deploy') {
+input message: "Approve deployment for $env.Name?"
+sh 'echo "deploying $INSTITUTE_NAME app to $env.Name for $TEAM"'
+}
+
+}
